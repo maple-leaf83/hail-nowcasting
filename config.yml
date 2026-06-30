@@ -1,0 +1,2 @@
+data_file: 'data_V4_10fold.csv'
+save_path: 'params/'

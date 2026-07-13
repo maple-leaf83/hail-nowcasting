@@ -155,9 +155,11 @@ if __name__ == "__main__":
 
             filters = [[512, 512, 512, 512, 512]]
 
+            # Reduced patience and epoch budget vs. final training — feature
+            # selection needs a reliable feature ranking, not full convergence.
             callbacks = [
-                ReduceLROnPlateau(monitor='val_loss', patience=15, min_lr=1e-10),
-                EarlyStopping(monitor='val_loss', patience=300, restore_best_weights=True)
+                ReduceLROnPlateau(monitor='val_loss', patience=10, min_lr=1e-10),
+                EarlyStopping(monitor='val_loss', patience=50, restore_best_weights=True)
             ]
 
             model = gen_mlp_network(input_shape=(X_train.shape[1],), num_filters=filters[0], dropout=0.1)
@@ -165,7 +167,7 @@ if __name__ == "__main__":
                           loss=['binary_crossentropy', 'binary_crossentropy', 'binary_crossentropy']
                           )
             y_train_form = format(y_tr)
-            history = model.fit(X_tr, y_train_form, epochs=900, batch_size=512,
+            history = model.fit(X_tr, y_train_form, epochs=300, batch_size=512,
                                 validation_data=(X_val, format(y_val)),
                                 callbacks=callbacks,
                                 verbose=0)
@@ -184,6 +186,7 @@ if __name__ == "__main__":
             bs_model3, bs_ref_c3, bs_ref_p3, bss_c3, bss_p3 = compute_BSS_scores(y_test[:, 2], test_results[:, 2], y_ref_VP)
 
             results_dict = {'split': n, 'num_features': feature_num,
+                            'features': ','.join(predictors),
                             'data_factor': mult_factor,
                             'bsm_30': bs_model1, 'BSS_30': bss_p1,
                             'bsm_15': bs_model2, 'BSS_15_45': bss_p2,
@@ -204,10 +207,14 @@ if __name__ == "__main__":
                 # Using the longest lead time head is conservative — features
                 # that matter at 30-60 min are likely relevant at shorter leads.
                 # -------------------------------------------------------------
+                # Subsample test set for SHAP — 500 samples is sufficient for
+                # a reliable feature ranking and is much faster than the full set.
+                shap_idx = np.random.choice(len(X_test_scaled), size=min(500, len(X_test_scaled)), replace=False)
+                shap_sample = X_test_scaled[shap_idx]
                 explainer = shap.Explainer(lambda x: model(x)[2][:, 0],
-                                           masker=X_test_scaled,
+                                           masker=shap_sample,
                                            feature_names=predictors)
-                shap_values = explainer(X_test_scaled)
+                shap_values = explainer(shap_sample)
 
                 shap_features = shap_values.feature_names
                 shap_abs = np.mean(shap_values.abs.values, axis=0)
@@ -215,14 +222,12 @@ if __name__ == "__main__":
                 index = np.argsort(shap_abs)[::-1]
                 features_sorted = [shap_features[i] for i in index]
 
-                # Find the index at which cumulative importance reaches 95%
-                # of the total. Features beyond this index are dropped.
-                shap_cumsum = np.cumsum(shap_sorted)
-                feature_index = [i for i, s in enumerate(shap_cumsum) if s <= 0.95 * np.max(shap_cumsum)]
-
-                feature_num = feature_index[-1]
-                print("New # features = ", feature_num)
-                predictors_updated = features_sorted[0:feature_num]
+                # Drop the bottom 5% of features by count each iteration.
+                # max(1, ...) ensures at least one feature is dropped so the
+                # loop always terminates even when the feature set is small.
+                n_drop = max(1, int(np.floor(feature_num * 0.05)))
+                feature_num = feature_num - n_drop
+                predictors_updated = features_sorted[:feature_num]
                 print("predictors_updated = ", predictors_updated)
 
                 # Update feature set and re-extract arrays for next iteration

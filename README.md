@@ -48,16 +48,6 @@ repo/
 
 The training scripts expect a CSV file with pre-computed 10-fold cross-validation splits. The expected columns are:
 
-#### Metadata columns (dropped before training)
-| Column | Description |
-|--------|-------------|
-| `time_unix` | Unix timestamp of the storm observation |
-| `radar_id` | Radar site identifier |
-| `parent_cell_id` | Parent storm cell identifier |
-| `segment_id` | Storm segment identifier |
-| `longitude` | Storm centroid longitude |
-| `latitude` | Storm centroid latitude |
-
 #### Target columns (MESH-derived hail labels)
 | Column | Description |
 |--------|-------------|

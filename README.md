@@ -55,24 +55,11 @@ The training scripts expect a CSV file with pre-computed 10-fold cross-validatio
 | `MESH_bool_15_45` | 1 if MESH ≥ 35 mm in the 15–45 min window, else 0 |
 | `MESH_bool_last_30` | 1 if MESH ≥ 35 mm in the 30–60 min window, else 0 |
 
-
-#### Auxiliary columns (dropped before training)
-| Column | Description |
-|--------|-------------|
-| `MESH_max_next_30` | Maximum MESH in 0–30 min window |
-| `MESH_max_last_30` | Maximum MESH in 30–60 min window |
-| `MESH_max_15_45` | Maximum MESH in 15–45 min window |
-
-
 #### Persistence reference column (derived at runtime)
 | Column | Description |
 |--------|-------------|
 | `MESH_max` | Current maximum MESH within the storm object (used to derive `persistence_bool`: 1 if ≥ 35 mm) |
 
-#### Cross-validation split columns
-| Column | Description |
-|--------|-------------|
-| `split0` … `split9` | String label, either `'Train'` or `'Test'`, for each of the 10 day-based folds |
 
 #### Predictor features (37 total)
 | Column | Description |
